@@ -16,7 +16,7 @@ https://github.com/YuLab-SMU/clusterProfiler
 scanpy v1.6.1
 https://github.com/scverse/scanpy/releases/tag/1.6.1
 
-velocyto v0.17.17	(La Manno et al., 2018)
+velocyto v0.17.17	
 https://github.com/velocyto-team/velocyto.py/releases/tag/0.17.17
 
 pyscenic v0.11.0	
