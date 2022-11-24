@@ -1,0 +1,68 @@
+%matplotlib inline
+import scrublet as scr
+import scipy.io
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import os
+os.chdir("/sdb/jxx/MTR")
+os.getcwd()
+
+counts_matrix=pd.read_csv('V3E7.csv', header=0,index_col=0).T
+scrub = scr.Scrublet(counts_matrix, expected_doublet_rate=0.048)
+doublet_scores, predicted_doublets = scrub.scrub_doublets(min_counts=2, min_cells=3,   min_gene_variability_pctl=85, n_prin_comps=30)
+scrub.plot_histogram()
+predicted_doublets=scrub.call_doublets(threshold=0.12)
+scrub.plot_histogram()
+doub = { 'doublet_s': scrub.predicted_doublets_,
+        'score_s': scrub.doublet_scores_obs_  }
+doub=pd.DataFrame(doub)
+np.savetxt('V3E7-scrublet.csv', doub, delimiter = ',') 
+
+counts_matrix=pd.read_csv('V3E8.csv', header=0,index_col=0).T
+scrub = scr.Scrublet(counts_matrix, expected_doublet_rate=0.049)
+doublet_scores, predicted_doublets = scrub.scrub_doublets(min_counts=2, min_cells=3,   min_gene_variability_pctl=85, n_prin_comps=30)
+scrub.plot_histogram()
+predicted_doublets=scrub.call_doublets(threshold=0.10)
+scrub.plot_histogram()
+doub = { 'doublet_s': scrub.predicted_doublets_,
+        'score_s': scrub.doublet_scores_obs_  }
+doub=pd.DataFrame(doub)
+np.savetxt('V3E8-scrublet.csv', doub, delimiter = ',') 
+
+counts_matrix=pd.read_csv('V3E9.csv', header=0,index_col=0).T
+scrub = scr.Scrublet(counts_matrix, expected_doublet_rate=0.069)
+doublet_scores, predicted_doublets = scrub.scrub_doublets(min_counts=2, min_cells=3,   min_gene_variability_pctl=85, n_prin_comps=30)
+scrub.plot_histogram()
+predicted_doublets=scrub.call_doublets(threshold=0.12)
+scrub.plot_histogram()
+doub = { 'doublet_s': scrub.predicted_doublets_,
+        'score_s': scrub.doublet_scores_obs_  }
+doub=pd.DataFrame(doub)
+np.savetxt('V3E9-scrublet.csv', doub, delimiter = ',')  
+
+counts_matrix=pd.read_csv('V3E11.csv', header=0,index_col=0).T
+scrub = scr.Scrublet(counts_matrix, expected_doublet_rate=0.051)
+doublet_scores, predicted_doublets = scrub.scrub_doublets(min_counts=2, min_cells=3,   min_gene_variability_pctl=85, n_prin_comps=30)
+scrub.plot_histogram()
+predicted_doublets=scrub.call_doublets(threshold=0.10)
+scrub.plot_histogram()
+doub = { 'doublet_s': scrub.predicted_doublets_,
+        'score_s': scrub.doublet_scores_obs_  }
+doub=pd.DataFrame(doub)
+np.savetxt('V3E11-scrublet.csv', doub, delimiter = ',')  
+
+counts_matrix=pd.read_csv('V3E13.csv', header=0,index_col=0).T
+scrub = scr.Scrublet(counts_matrix, expected_doublet_rate=0.053)
+doublet_scores, predicted_doublets = scrub.scrub_doublets(min_counts=2, min_cells=3,   min_gene_variability_pctl=85, n_prin_comps=30)
+scrub.plot_histogram()
+
+predicted_doublets=scrub.call_doublets(threshold=0.10)
+scrub.plot_histogram()
+doub = { 'doublet_s': scrub.predicted_doublets_,
+        'score_s': scrub.doublet_scores_obs_  }
+doub=pd.DataFrame(doub)
+np.savetxt('V3E13-scrublet.csv', doub, delimiter = ',')  
+
+
+

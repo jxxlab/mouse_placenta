@@ -1,0 +1,470 @@
+# import dependencies
+import os
+import numpy as np
+import pandas as pd
+import scanpy as sc
+import loompy as lp
+from MulticoreTSNE import MulticoreTSNE as TSNE
+#from scanpy.plotting._tools.scatterplots import plot_scatter
+sc.settings.verbosity = 3 # verbosity: errors (0), warnings (1), info (2), hints (3)
+#sc.logging.print_versions()
+sc.set_figure_params(dpi=100, fontsize=10, dpi_save=100)
+sc.settings.figdir ='/home/jxx/MPL/scenic'
+sc.settings.njobs = 32;os.getcwd()
+
+# # path to loom file with basic filtering applied (this will be created in the "initial filtering" step below). Optional.
+f_loom_path_scenic = "MTR15682_scenic.loom"
+# path to pyscenic output
+f_pyscenic_output = "MTR15682_scenic_output.loom"
+# loom output, generated from a combination of Scanpy and pySCENIC results:
+f_final_loom = 'MTR15682__scenic_integrated-output.loom'
+
+adata=sc.read("MTR15682.loom", cache=True);adata
+
+adata.obsm['X_pca']=adata.obsm['pca_cell_embeddings']
+adata.obsm['X_umap']=adata.obsm['umap_cell_embeddings']
+adata.obsm['X_tsne']=adata.obsm['umap_cell_embeddings'
+sc.pl.umap( adata, color=['cluster_17',"stage"]);adata
+
+
+
+# create basic row and column attributes for the loom file:
+row_attrs = {
+    "Gene": np.array(adata.var_names) ,
+}
+col_attrs = {
+    "CellID": np.array(adata.obs_names) ,
+    "nGene": np.array(np.sum(adata.X.transpose()>0 , axis=0)).flatten() ,
+    "nUMI": np.array(np.sum(adata.X.transpose() , axis=0)).flatten() ,
+}
+lp.create( f_loom_path_scenic, adata.X.transpose(), row_attrs, col_attrs)
+
+# transcription factors list
+f_tfs = "/home/jxx/scenic/database/mm_mgi_tfs.txt" 
+
+!/home/jxx/scenic/arboreto_with_multiprocessing.py  {f_loom_path_scenic}   {f_tfs} --method grnboost2 \
+   --output MTR15682_adj2.tsv   --num_workers 64     --seed 777
+adjacencies = pd.read_csv("MTR15682_adj.tsv", index_col=False, sep='\t');adjacencies.head()
+
+import glob
+# ranking databases
+f_db_glob = "/home/jxx/scenic/database/mm10/*feather"
+f_db_names = ' '.join( glob.glob(f_db_glob) )
+# motif databases
+f_motif_path = "/home/jxx/scenic/database/motifs-v9-nr.mgi-m0.001-o0.0.tbl"
+
+!pyscenic ctx MTR15682_adj.tsv \
+    {f_db_names} \
+    --annotations_fname {f_motif_path} \
+    --expression_mtx_fname {f_loom_path_scenic} \
+    --output MTR15682_reg.csv \
+    --mask_dropouts \
+    --num_workers 32
+
+!pyscenic aucell \
+    {f_loom_path_scenic} \
+    MTR15682_reg.csv \
+    --output {f_pyscenic_output} \
+    --num_workers 32
+
+import json
+import zlib
+import base64
+
+# collect SCENIC AUCell output
+lf = lp.connect( f_pyscenic_output, mode='r', validate=False )
+auc_mtx = pd.DataFrame( lf.ca.RegulonsAUC, index=lf.ca.CellID)
+lf.close()
+
+import umap
+
+# UMAP
+runUmap = umap.UMAP(n_neighbors=10, min_dist=0.4, metric='correlation').fit_transform
+dr_umap = runUmap( auc_mtx )
+pd.DataFrame(dr_umap, columns=['X', 'Y'], index=auc_mtx.index).to_csv( "MTR15682_scenic_umap.txt", sep='\t')
+# tSNE
+tsne = TSNE( n_jobs=36 )
+dr_tsne = tsne.fit_transform( auc_mtx )
+pd.DataFrame(dr_tsne, columns=['X', 'Y'], index=auc_mtx.index).to_csv( "MTR15682_scenic_tsne.txt", sep='\t')
+
+# scenic output
+lf = lp.connect( f_pyscenic_output, mode='r', validate=False )
+meta = json.loads(zlib.decompress(base64.b64decode( lf.attrs.MetaData )))
+#exprMat = pd.DataFrame( lf[:,:], index=lf.ra.Gene, columns=lf.ca.CellID)
+auc_mtx = pd.DataFrame( lf.ca.RegulonsAUC, index=lf.ca.CellID)
+regulons = lf.ra.Regulons
+dr_umap = pd.read_csv( 'MTR15682_scenic_umap.txt', sep='\t', header=0 , index_col=0 )
+dr_tsne = pd.read_csv( 'MTR15682_scenic_tsne.txt', sep='\t', header=0, index_col=0 )
+
+auc_mtx.columns = auc_mtx.columns.str.replace('\(','_(')
+regulons.dtype.names = tuple( [ x.replace("(","_(") for x in regulons.dtype.names ] )
+# regulon thresholds
+rt = meta['regulonThresholds']
+for i,x in enumerate(rt):
+    tmp = x.get('regulon').replace("(","_(")
+    x.update( {'regulon': tmp} )
+
+tsneDF = pd.DataFrame(adata.obsm['X_umap'], columns=['_X', '_Y'])
+
+Embeddings_X = pd.DataFrame( index=lf.ca.CellID )
+Embeddings_X = pd.concat( [
+        pd.DataFrame(adata.obsm['X_umap'],index=adata.obs.index)[0] ,
+        pd.DataFrame(adata.obsm['X_pca'],index=adata.obs.index)[0] ,
+        dr_tsne['X'] ,
+        dr_umap['X']
+    ], sort=False, axis=1, join='outer' )
+Embeddings_X.columns = ['1','2','3','4']
+
+Embeddings_Y = pd.DataFrame( index=lf.ca.CellID )
+Embeddings_Y = pd.concat( [
+        pd.DataFrame(adata.obsm['X_umap'],index=adata.obs.index)[1] ,
+        pd.DataFrame(adata.obsm['X_pca'],index=adata.obs.index)[1] ,
+        dr_tsne['Y'] ,
+        dr_umap['Y']
+    ], sort=False, axis=1, join='outer' )
+Embeddings_Y.columns = ['1','2','3','4']
+
+### metadata
+metaJson = {}
+
+metaJson['embeddings'] = [
+    
+    {
+        "id": -1,
+        "name": "tsne"
+    },
+    {
+        "id": 1,
+        "name": "umap"
+    },
+    {
+        "id": 2,
+        "name": "pca"
+    },
+        {
+        "id": 3,
+        "name": "SCENIC AUC t-SNE"
+    },
+    {
+        "id": 4,
+        "name": "SCENIC AUC UMAP"
+    },
+]
+
+metaJson["clusterings"] = [{
+            "id": 0,
+            "group": "Scanpy",
+            "name": "Scanpy louvain default resolution",
+            "clusters": [],
+        }]
+
+metaJson["metrics"] = [
+        {
+            "name": "nCount_RNA"
+        }, {
+            "name": "nFeature_RNA"
+        }, {
+            "name": "percent_mt"
+        }
+]
+
+metaJson["annotations"] = [
+    {
+        "name": "cluster_17",
+        "values": list(set( adata.obs['cluster_17'].values ))
+    },
+        {
+        "name": "cluster_17E",
+        "values": list(set( adata.obs['cluster_17E'].values ))
+    },
+    {
+        "name": "stage",
+        "values": list(set( adata.obs['stage'].values ))
+    },
+    {
+        "name": "branch",
+        "values": list(set( adata.obs['branch'].values ))
+    },
+     {
+]
+
+# SCENIC regulon thresholds:
+metaJson["regulonThresholds"] = rt
+
+def dfToNamedMatrix(df):
+    arr_ip = [tuple(i) for i in df.values]
+    dtyp = np.dtype(list(zip(df.dtypes.index, df.dtypes)))
+    arr = np.array(arr_ip, dtype=dtyp)
+    return arr
+
+
+col_attrs = {
+    "CellID": np.array(adata.obs.index),
+    "nCount_RNA": np.array(adata.obs['nCount_RNA'].values),
+    "nFeature_RNA": np.array(adata.obs['nFeature_RNA'].values),
+    "cluster_17": np.array(adata.obs['cluster_17'].values),
+    "cluster_17E": np.array(adata.obs['cluster_17E'].values),
+    "stage": np.array(adata.obs['stage'].values),
+    "branch": np.array(adata.obs['branch'].values),
+    "percent_mt": np.array(adata.obs['percent_mt'].values),
+    "Embedding": dfToNamedMatrix(tsneDF),
+    "Embeddings_X": dfToNamedMatrix(Embeddings_X),
+    "Embeddings_Y": dfToNamedMatrix(Embeddings_Y),
+    "RegulonsAUC": dfToNamedMatrix(auc_mtx),
+ #   "Clusterings": dfToNamedMatrix(clusterings),
+ #  "ClusterID": np.array(adata.obs['louvain'].values)
+}
+
+row_attrs = {
+    "Gene": lf.ra.Gene,
+    "Regulons": regulons,
+}
+
+attrs = {
+    "title": "sampleTitle",
+    "MetaData": json.dumps(metaJson),
+    "Genome": 'hg38',
+    "SCopeTreeL1": "",
+    "SCopeTreeL2": "",
+    "SCopeTreeL3": ""
+}
+
+# compress the metadata field:
+attrs['MetaData'] = base64.b64encode(zlib.compress(json.dumps(metaJson).encode('ascii'))).decode('ascii')
+
+
+lp.create(
+    filename = f_final_loom ,
+    layers=lf[:,:],
+    row_attrs=row_attrs, 
+    col_attrs=col_attrs, 
+    file_attrs=attrs
+)
+lf.close() # close original pyscenic loom file
+
+# import dependencies
+import os
+import numpy as np
+import pandas as pd
+import scanpy as sc
+import loompy as lp
+from MulticoreTSNE import MulticoreTSNE as TSNE
+import json
+import base64
+import zlib
+from pyscenic.plotting import plot_binarization
+from pyscenic.export import add_scenic_metadata
+from pyscenic.cli.utils import load_signatures
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+#from scanpy.plotting._tools.scatterplots import plot_scatter
+import seaborn as sns
+f_final_loom = 'MTR15682__scenic_integrated-output.loom'
+
+# scenic output
+lf = lp.connect( f_final_loom, mode='r', validate=False )
+meta = json.loads(zlib.decompress(base64.b64decode( lf.attrs.MetaData )))
+exprMat = pd.DataFrame( lf[:,:], index=lf.ra.Gene, columns=lf.ca.CellID).T
+auc_mtx = pd.DataFrame( lf.ca.RegulonsAUC, index=lf.ca.CellID)
+
+# create a dictionary of regulons:
+regulons = {}
+for i,r in pd.DataFrame(lf.ra.Regulons,index=lf.ra.Gene).iteritems():
+    regulons[i] =  list(r[r==1].index.values)
+
+# cell annotations from the loom column attributes:
+cellAnnot = pd.concat(
+    [
+        pd.DataFrame( lf.ca.nCount_RNA, index=lf.ca.CellID ),
+        pd.DataFrame( lf.ca.nFeature_RNA, index=lf.ca.CellID ),
+        pd.DataFrame( lf.ca.percent_mt, index=lf.ca.CellID ),
+        pd.DataFrame( lf.ca.cluster_17, index=lf.ca.CellID ),
+        pd.DataFrame( lf.ca.cluster_17E, index=lf.ca.CellID),
+        pd.DataFrame( lf.ca.stage, index=lf.ca.CellID),
+        pd.DataFrame( lf.ca.branch, index=lf.ca.CellID)
+        
+        
+    ],
+    axis=1
+)
+cellAnnot.columns = [
+"nCount_RNA",
+"nFeature_RNA",
+"percent_mt",
+"cluster_17",
+"cluster_17E",
+"stage",
+"branch"]
+
+# capture embeddings:
+dr = [
+    pd.DataFrame( lf.ca.Embedding, index=lf.ca.CellID )
+]
+dr_names = [
+    meta['embeddings'][0]['name'].replace(" ","_")
+]
+
+# add other embeddings
+drx = pd.DataFrame( lf.ca.Embeddings_X, index=lf.ca.CellID )
+dry = pd.DataFrame( lf.ca.Embeddings_Y, index=lf.ca.CellID )
+
+for i in range( len(drx.columns) ):
+    dr.append( pd.concat( [ drx.iloc[:,i], dry.iloc[:,i] ], sort=False, axis=1, join='outer' ))
+    dr_names.append( meta['embeddings'][i+1]['name'].replace(" ","_").replace('/','-') )
+
+# rename columns:
+for i,x in enumerate( dr ):
+    x.columns = ['X','Y']
+
+lf.close()
+
+adata = sc.read( f_final_loom, validate=False)
+
+# drop the embeddings and extra attributes from the obs object
+adata.obs.drop( ['Embedding','Embeddings_X','Embeddings_Y','RegulonsAUC'], axis=1, inplace=True );adata
+
+# add the embeddings into the adata.obsm object
+for i,x in enumerate( dr ):
+    adata.obsm[ 'X_'+dr_names[i] ] = x.as_matrix()
+adata
+
+sc.pl.scatter( adata, basis='SCENIC_AUC_UMAP',   color=['cluster_17E'], alpha=0.5, title=['SCENIC - UMAP (C)'], legend_loc='on data')
+
+sig = load_signatures('MTR15682_reg.csv')
+adata = add_scenic_metadata(adata, auc_mtx, sig)
+
+from pyscenic.utils import load_motifs
+import operator as op
+from IPython.display import HTML, display
+BASE_URL = "http://motifcollections.aertslab.org/v9/logos/"
+COLUMN_NAME_LOGO = "MotifLogo"
+COLUMN_NAME_MOTIF_ID = "MotifID"
+COLUMN_NAME_TARGETS = "TargetGenes"
+
+def display_logos(df: pd.DataFrame, top_target_genes: int = 3, base_url: str = BASE_URL):
+    """
+    :param df:
+    :param base_url:
+    """
+    # Make sure the original dataframe is not altered.
+    df = df.copy()
+    
+    # Add column with URLs to sequence logo.
+    def create_url(motif_id):
+        return '<img src="{}{}.png" style="max-height:124px;"></img>'.format(base_url, motif_id)
+    df[("Enrichment", COLUMN_NAME_LOGO)] = list(map(create_url, df.index.get_level_values(COLUMN_NAME_MOTIF_ID)))
+    
+    # Truncate TargetGenes.
+    def truncate(col_val):
+        return sorted(col_val, key=op.itemgetter(1))[:top_target_genes]
+    df[("Enrichment", COLUMN_NAME_TARGETS)] = list(map(truncate, df[("Enrichment", COLUMN_NAME_TARGETS)]))
+    
+    MAX_COL_WIDTH = pd.get_option('display.max_colwidth')
+    pd.set_option('display.max_colwidth', 200)
+    display(HTML(df.head().to_html(escape=False)))
+    pd.set_option('display.max_colwidth', MAX_COL_WIDTH)
+
+df_motifs = load_motifs('MTR15682_reg.csv')
+selected_motifs = ['Hand1','Tcf3','Cdx2']
+df_motifs_sel = df_motifs.iloc[ [ True if x in selected_motifs else False for x in df_motifs.index.get_level_values('TF') ] ,:]
+display_logos( df_motifs_sel.sort_values([('Enrichment','NES')], ascending=False).head(19))
+
+from pyscenic.rss import regulon_specificity_scores
+from pyscenic.plotting import plot_rss
+import matplotlib.pyplot as plt
+from adjustText import adjust_text
+import seaborn as sns
+from pyscenic.binarization import binarize
+
+rss_cellType = regulon_specificity_scores( auc_mtx, cellAnnot['cluster_17E'] )
+rss_cellType
+
+cats = list(adata.obs['cluster_17E'].cat.categories)
+
+fig = plt.figure(figsize=(18, 16))
+for c,num in zip(cats, range(1,len(cats)+1)):
+    x=rss_louvain.T[c]
+    ax = fig.add_subplot(4,6,num)
+    plot_rss(rss_louvain, c, top_n=10, max_n=None, ax=ax)
+    ax.set_ylim( x.min()-(x.max()-x.min())*0.05 , x.max()+(x.max()-x.min())*0.05 )
+    for t in ax.texts:
+        t.set_fontsize(12)
+    ax.set_ylabel('')
+    ax.set_xlabel('')
+    adjust_text(ax.texts, autoalign='xy', ha='right', va='bottom', arrowprops=dict(arrowstyle='-',color='lightgrey'), precision=0.001 )
+ 
+fig.text(0.5, 0.0, 'Regulon', ha='center', va='center', size='x-large')
+fig.text(0.00, 0.5, 'Regulon specificity score (RSS)', ha='center', va='center', rotation='vertical', size='x-large')
+plt.tight_layout()
+plt.rcParams.update({
+    'figure.autolayout': True,
+        'figure.titlesize': 'large' ,
+        'axes.labelsize': 'medium',
+        'axes.titlesize':'large',
+        'xtick.labelsize':'medium',
+        'ytick.labelsize':'medium'
+        })
+plt.show()
+
+
+topreg = []
+for i,c in enumerate(cats):
+    topreg.extend(
+        list(rss_louvain.T[c].sort_values(ascending=False)[:10].index)
+    )
+topreg = list(set(topreg))
+
+auc_mtx_Z = pd.DataFrame( index=auc_mtx.index )
+for col in list(auc_mtx.columns):
+    auc_mtx_Z[ col ] = ( auc_mtx[col] - auc_mtx[col].mean()) / auc_mtx[col].std(ddof=0)
+#auc_mtx_Z.sort_index(inplace=True)
+
+def palplot(pal, names, colors=None, size=1):
+    n = len(pal)
+    f, ax = plt.subplots(1, 1, figsize=(n * size, size))
+    ax.imshow(np.arange(n).reshape(1, n),
+              cmap=mpl.colors.ListedColormap(list(pal)),
+              interpolation="nearest", aspect="auto")
+    ax.set_xticks(np.arange(n) - .5)
+    ax.set_yticks([-.5, .5])
+    ax.set_xticklabels([])
+    ax.set_yticklabels([])
+    colors = n * ['k'] if colors is None else colors
+    for idx, (name, color) in enumerate(zip(names, colors)):
+        ax.text(0.0+idx, 0.0, name, color=color, horizontalalignment='center', verticalalignment='center')
+    return f
+
+colors =adata.uns['cluster_17E_colors']
+colorsd = dict( zip( cats, colors ))
+colormap = [ colorsd[x] for x in cellAnnot['cluster_17E'] ]
+
+sns.set()
+sns.set(font_scale=1)
+fig = palplot( colors, cats, size=0.7)
+
+sns.set(font_scale=0.7)
+sns.clustermap(auc_mtx_Z[topreg].T, annot=False,  yticklabels=True, xticklabels=False, vmin=-2, vmax=6,  
+                   col_colors=colormap,  col_cluster=False,  cmap="YlGnBu", figsize=(8,12) )
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,13 @@
+library_id,molecule_h5
+m07,/sda/mpl_grcm38.89/GRCm38_89-m07/outs/molecule_info.h5
+m08,/sda/mpl_grcm38.89/GRCm38_89-m08/outs/molecule_info.h5
+m09,/sda/mpl_grcm38.89/GRCm38_89-m09/outs/molecule_info.h5
+m09d,/sda/mpl_grcm38.89/GRCm38_89-m09d/outs/molecule_info.h5
+m10,/sda/mpl_grcm38.89/GRCm38_89-m10/outs/molecule_info.h5
+m10h,/sda/mpl_grcm38.89/GRCm38_89-m10h/outs/molecule_info.h5
+m11h,/sda/mpl_grcm38.89/GRCm38_89-m11h/outs/molecule_info.h5
+m12h,/sda/mpl_grcm38.89/GRCm38_89-m12h/outs/molecule_info.h5
+m12,/sda/mpl_grcm38.89/GRCm38_89-m12/outs/molecule_info.h5
+m13,/sda/mpl_grcm38.89/GRCm38_89-m13/outs/molecule_info.h5
+m14,/sda/mpl_grcm38.89/GRCm38_89-m14/outs/molecule_info.h5
+m14d,/sda/mpl_grcm38.89/GRCm38_89-m14d/outs/molecule_info.h5

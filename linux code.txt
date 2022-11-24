@@ -1,0 +1,40 @@
+export PATH=/home/soft/cellranger-2.1.1:$PATH
+cellranger count --id=m07                    --transcriptome=/home/soft/GRCm38.89     --fastqs=fastq/m07
+cellranger count --id=m08                    --transcriptome=/home/soft/GRCm38.89     --fastqs=fastq/m08
+cellranger count --id=m09                    --transcriptome=/home/soft/GRCm38.89     --fastqs=fastq/m09
+cellranger count --id=m10                    --transcriptome=/home/soft/GRCm38.89     --fastqs=fastq/m10
+cellranger count --id=m10h                  --transcriptome=/home/soft/GRCm38.89     --fastqs=fastq/m10h
+cellranger count --id=m11h                  --transcriptome=/home/soft/GRCm38.89     --fastqs=fastq/m11h
+cellranger count --id=m12h                  --transcriptome=/home/soft/GRCm38.89     --fastqs=fastq/m12h
+cellranger count --id=m12                    --transcriptome=/home/soft/GRCm38.89     --fastqs=fastq/m12
+cellranger count --id=m13                    --transcriptome=/home/soft/GRCm38.89     --fastqs=fastq/m13
+cellranger count --id=m14                    --transcriptome=/home/soft/GRCm38.89     --fastqs=fastq/m14
+cellranger aggr  --id=MPL-10     --csv=mpl-10.csv   --normalize=mapped 
+
+velocyto run10x  -m /home/soft/mm10_rmsk.gtf   GRCm38_89-m7       /home/soft/GRCm38.89/genes/genes.gtf
+velocyto run10x  -m /home/soft/mm10_rmsk.gtf   GRCm38_89-m8       /home/soft/GRCm38.89/genes/genes.gtf
+velocyto run10x  -m /home/soft/mm10_rmsk.gtf   GRCm38_89-m9       /home/soft/GRCm38.89/genes/genes.gtf
+velocyto run10x  -m /home/soft/mm10_rmsk.gtf   GRCm38_89-m10     /home/soft/GRCm38.89/genes/genes.gtf
+velocyto run10x  -m /home/soft/mm10_rmsk.gtf   GRCm38_89-m10h   /home/soft/GRCm38.89/genes/genes.gtf
+velocyto run10x  -m /home/soft/mm10_rmsk.gtf   GRCm38_89-m11h   /home/soft/GRCm38.89/genes/genes.gtf
+velocyto run10x  -m /home/soft/mm10_rmsk.gtf   GRCm38_89-m12h   /home/soft/GRCm38.89/genes/genes.gtf
+velocyto run10x  -m /home/soft/mm10_rmsk.gtf   GRCm38_89-m12     /home/soft/GRCm38.89/genes/genes.gtf
+velocyto run10x  -m /home/soft/mm10_rmsk.gtf   GRCm38_89-m13     /home/soft/GRCm38.89/genes/genes.gtf
+velocyto run10x  -m /home/soft/mm10_rmsk.gtf   GRCm38_89-m14     /home/soft/GRCm38.89/genes/genes.gtf
+
+
+
+export PATH=/home/soft/cellranger-7.0.0:$PATH
+cellranger count --id=V3-E7                  --transcriptome=/home/soft/GRCm38.89     --fastqs=V3-E7
+cellranger count --id=V3-E8                  --transcriptome=/home/soft/GRCm38.89     --fastqs=V3-E8
+cellranger count --id=V3-E9                  --transcriptome=/home/soft/GRCm38.89     --fastqs=V3-E9    --force-cells=10000
+cellranger count --id=V3-E13                --transcriptome=/home/soft/GRCm38.89     --fastqs=V3-E13
+cellranger count --id=V3-E11                --transcriptome=/home/soft/GRCm38.89     --fastqs=V3-E11
+cellranger aggr  --id=MTR-V3-5     --csv=MTR-V3-5.csv   --normalize=mapped    
+
+
+
+
+
+
+
