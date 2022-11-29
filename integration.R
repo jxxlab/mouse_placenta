@@ -197,6 +197,20 @@ DimPlot(pbmc, label=F,cols=colorRampPalette(rainbow(9)[c(4,3,6,7,2,1,9,8)])(19))
 
 
 
+pbmc <- FindNeighbors(pbmc, dims = 1:12)
+pbmc <- FindClusters(pbmc, resolution = 0.3)
+DimPlot(pbmc, label=T,label.size = 8)
+
+
+pbmcx=subset(pbmc,idents=9);pbmcx
+Idents(pbmcx)="origin"
+write.table(WhichCells(pbmcx,idents ="Cells_V2"), file="cluster_19_cell.txt",row.names = F, col.names = F,quote = F) 
+
+
+
+
+
+
 session_info()
 
 R version 3.6.0 (2019-04-26)
