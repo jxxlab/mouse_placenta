@@ -1,0 +1,11 @@
+library_id,molecule_h5
+m07,/sdc/jxx/MTR/GRCm38_89-m07/outs/molecule_info.h5
+m08,/sdc/jxx/MTR/GRCm38_89-m08/outs/molecule_info.h5
+m09,/sdc/jxx/MTR/GRCm38_89-m09/outs/molecule_info.h5
+m10,/sdc/jxx/MTR/GRCm38_89-m10/outs/molecule_info.h5
+m10h,/sdc/jxx/MTR/GRCm38_89-m10h/outs/molecule_info.h5
+m11h,/sdc/jxx/MTR/GRCm38_89-m11h/outs/molecule_info.h5
+m12h,/sdc/jxx/MTR/GRCm38_89-m12h/outs/molecule_info.h5
+m12,/sdc/jxx/MTR/GRCm38_89-m12/outs/molecule_info.h5
+m13,/sdc/jxx/MTR/GRCm38_89-m13/outs/molecule_info.h5
+m14,/sdc/jxx/MTR/GRCm38_89-m14/outs/molecule_info.h5
