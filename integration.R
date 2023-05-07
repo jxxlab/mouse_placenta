@@ -2,7 +2,7 @@ library(Seurat)
 library(RColorBrewer)
 library(SeuratDisk)
 
-pbmc <- readRDS("/home/jxx/MPL/nu16836.rds")
+pbmc <- readRDS("/home/jxx/MPL/nu16836.rds")  #downloaded from https://figshare.com/articles/dataset/AllStages_TrophoblastNuclei_obj_Rdata/13204268
 pbmc$cluster_17E=Idents(pbmc)
 Idents(pbmc)="cluster_17E"
 Idents(pbmc, cells = WhichCells(pbmc,idents = "SynTI")) <- "21"
